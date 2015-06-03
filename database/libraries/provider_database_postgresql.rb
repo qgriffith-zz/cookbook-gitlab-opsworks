@@ -1,7 +1,7 @@
 #
-# Author:: Seth Chisamore (<schisamo@opscode.com>)
-# Author:: Lamont Granquist (<lamont@opscode.com>)
-# Copyright:: Copyright (c) 2011 Opscode, Inc.
+# Author:: Seth Chisamore (<schisamo@chef.io>)
+# Author:: Lamont Granquist (<lamont@chef.io>)
+# Copyright:: Copyright (c) 2011 Chef Software, Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,12 @@ require 'chef/provider'
 class Chef
   class Provider
     class Database
-      class Postgresql < Chef::Provider
-        include Chef::Mixin::ShellOut
+      class Postgresql < Chef::Provider::LWRPBase
+        use_inline_resources if defined?(use_inline_resources)
+
+        def whyrun_supported?
+          true
+        end
 
         def load_current_resource
           Gem.clear_paths
@@ -33,11 +37,11 @@ class Chef
           @current_resource
         end
 
-        def action_create
+        action :create do
           unless exists?
             begin
               encoding = @new_resource.encoding
-              if encoding != "DEFAULT"
+              if encoding != 'DEFAULT'
                 encoding = "'#{@new_resource.encoding}'"
               end
               Chef::Log.debug("#{@new_resource}: Creating database #{new_resource.database_name}")
@@ -49,7 +53,7 @@ class Chef
               create_sql += " CONNECTION LIMIT = #{new_resource.connection_limit}" if new_resource.connection_limit
               create_sql += " OWNER = \"#{new_resource.owner}\"" if new_resource.owner
               Chef::Log.debug("#{@new_resource}: Performing query [#{create_sql}]")
-              db("template1").query(create_sql)
+              db('template1').query(create_sql)
               @new_resource.updated_by_last_action(true)
             ensure
               close
@@ -57,11 +61,11 @@ class Chef
           end
         end
 
-        def action_drop
+        action :drop do
           if exists?
             begin
               Chef::Log.debug("#{@new_resource}: Dropping database #{new_resource.database_name}")
-              db("template1").query("DROP DATABASE \"#{new_resource.database_name}\"")
+              db('template1').query("DROP DATABASE \"#{new_resource.database_name}\"")
               @new_resource.updated_by_last_action(true)
             ensure
               close
@@ -69,7 +73,7 @@ class Chef
           end
         end
 
-        def action_query
+        action :query do
           if exists?
             begin
               Chef::Log.debug("#{@new_resource}: Performing query [#{new_resource.sql_query}]")
@@ -87,13 +91,23 @@ class Chef
         def exists?
           begin
             Chef::Log.debug("#{@new_resource}: checking if database #{@new_resource.database_name} exists")
-            ret = db("template1").query("SELECT * FROM pg_database where datname = '#{@new_resource.database_name}'").num_tuples != 0
+            ret = db('template1').query("SELECT * FROM pg_database where datname = '#{@new_resource.database_name}'").num_tuples != 0
             ret ? Chef::Log.debug("#{@new_resource}: database #{@new_resource.database_name} exists") :
                   Chef::Log.debug("#{@new_resource}: database #{@new_resource.database_name} does not exist")
           ensure
             close
           end
           ret
+        end
+
+        # Test if text is psql keyword
+        def keyword?(text)
+          begin
+            result = db('template1').exec_params('select * from pg_get_keywords() where word = $1', [text.downcase]).num_tuples != 0
+          ensure
+            close
+          end
+          result
         end
 
         #
@@ -108,15 +122,15 @@ class Chef
           dbname = @new_resource.connection[:database] if @new_resource.connection[:database]
           host = @new_resource.connection[:host]
           port = @new_resource.connection[:port] || 5432
-          user = @new_resource.connection[:username] || "postgres"
+          user = @new_resource.connection[:username] || 'postgres'
           Chef::Log.debug("#{@new_resource}: connecting to database #{dbname} on #{host}:#{port} as #{user}")
           password = @new_resource.connection[:password] || node[:postgresql][:password][:postgres]
           @db = ::PGconn.new(
-            :host => host,
-            :port => port,
-            :dbname => dbname,
-            :user => user,
-            :password => password
+            host: host,
+            port: port,
+            dbname: dbname,
+            user: user,
+            password: password
           )
         end
 
@@ -124,7 +138,6 @@ class Chef
           @db.close rescue nil
           @db = nil
         end
-
       end
     end
   end

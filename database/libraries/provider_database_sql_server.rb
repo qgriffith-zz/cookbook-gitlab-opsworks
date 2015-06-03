@@ -1,6 +1,6 @@
 #
-# Author:: Seth Chisamore (<schisamo@opscode.com>)
-# Copyright:: Copyright (c) 2011 Opscode, Inc.
+# Author:: Seth Chisamore (<schisamo@chef.io>)
+# Copyright:: Copyright (c) 2011 Chef Software, Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,7 @@ class Chef
         def action_query
           if exists?
             begin
-              #db.select_db(@new_resource.database_name) if @new_resource.database_name
+              # db.select_db(@new_resource.database_name) if @new_resource.database_name
               Chef::Log.debug("#{@new_resource}: Performing query [#{new_resource.sql_query}]")
               db.execute(@new_resource.sql_query).do
               @new_resource.updated_by_last_action(true)
@@ -72,10 +72,11 @@ class Chef
         end
 
         private
+
         def exists?
           exists = false
           begin
-            result = db.execute("SELECT name FROM sys.databases")
+            result = db.execute('SELECT name FROM sys.databases')
             result.each do |row|
               if row['name'] == @new_resource.database_name
                 exists = true
@@ -92,10 +93,10 @@ class Chef
         def db
           @db ||= begin
             ::TinyTds::Client.new(
-              :host => @new_resource.connection[:host],
-              :username => @new_resource.connection[:username],
-              :password => @new_resource.connection[:password],
-              :port => @new_resource.connection[:port] || 1433
+              host: @new_resource.connection[:host],
+              username: @new_resource.connection[:username],
+              password: @new_resource.connection[:password],
+              port: @new_resource.connection[:port] || 1433
             )
           end
         end
@@ -104,7 +105,6 @@ class Chef
           @db.close rescue nil
           @db = nil
         end
-
       end
     end
   end
